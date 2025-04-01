@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "642694559072",
+    "project_id": "selamkapisi-75abb",
+    "storage_bucket": "selamkapisi-75abb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:642694559072:android:49df85c1d7be7e27a41a05",
+        "android_client_info": {
+          "package_name": "com.example.selamkapisi"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "642694559072-otjot778vqpbld4rhbap8ajgafju7j72.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.selamkapisi",
+            "certificate_hash": "bfaef05aeb15be53cd8ba3c4d74b4a8247dded45"
+          }
+        },
+        {
+          "client_id": "642694559072-6h6kliqnqe9k70uic3bpjit2gmgaqaco.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQs98IRNfeJ1v0LRvRqZq9Bo8EJjDEY0Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "642694559072-6h6kliqnqe9k70uic3bpjit2gmgaqaco.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "642694559072-t1648dmb9cfhohfofmf1g9dallu0mv51.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.selamkapisi"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

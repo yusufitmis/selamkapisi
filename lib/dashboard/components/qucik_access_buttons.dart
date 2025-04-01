@@ -1,0 +1,117 @@
+import 'package:flutter/material.dart';
+
+import '../utils/verse_utils.dart';
+
+class QuickAccessButtons extends StatelessWidget {
+  const QuickAccessButtons({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[850],
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.5),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+        border: Border.all(color: Colors.grey[700]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'HIZLI ERİŞİM',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.amber[300],
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 16),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            childAspectRatio: 1.5,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+            children: [
+              _buildQuickAccessButton(
+                icon: Icons.chat,
+                label: 'Fetva Soralım',
+                color: Colors.green,
+                onTap: () => Navigator.pushNamed(context, '/fatwa'),
+              ),
+              _buildQuickAccessButton(
+                icon: Icons.book,
+                label: 'İman Tazele',
+                color: Colors.blue,
+                onTap: () => VerseUtils.showRandomVerse(context),
+              ),
+              _buildQuickAccessButton(
+                icon: Icons.emoji_events,
+                label: 'Görevlerim',
+                color: Colors.purple,
+                onTap: () => Navigator.pushNamed(context, '/tasks'),
+              ),
+              _buildQuickAccessButton(
+                icon: Icons.person,
+                label: 'Profil',
+                color: Colors.orange,
+                onTap: () => Navigator.pushNamed(context, '/profile'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickAccessButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              color.withOpacity(0.2),
+              color.withOpacity(0.1),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 32, color: color),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
