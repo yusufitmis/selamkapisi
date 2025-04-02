@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:selamkapisi/coach/coach.dart';
 import 'package:selamkapisi/dashboard.dart';
 import 'package:selamkapisi/login.dart';
 import 'package:selamkapisi/profile/profile.dart';
@@ -9,10 +10,15 @@ import 'package:selamkapisi/forgot_password.dart';
 import 'package:selamkapisi/tasks/tasks.dart';
 
 import 'fatwa/fatwa.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+
   runApp(const MyApp());
 }
 
@@ -38,6 +44,7 @@ class MyApp extends StatelessWidget {
         '/fatwa': (context) => FatwaPage(), // Yeni eklenen
         '/tasks': (context) => TasksPage(),  // Yeni eklenen
         '/profile': (context) => ProfilePage(), // Yeni eklenen
+        '/coach': (context) => CoachPage()
       },
       // Optional: Handle unknown routes
       onGenerateRoute: (settings) {

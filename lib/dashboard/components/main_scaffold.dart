@@ -5,6 +5,7 @@ class MainScaffold extends StatelessWidget {
   final Widget body;
   final int currentIndex;
   final String? title;
+  final TextStyle? titleStyle;  // Added parameter
   final List<Widget>? actions;
   final bool showAppBar;
   final bool showBottomBar;
@@ -14,6 +15,7 @@ class MainScaffold extends StatelessWidget {
     required this.body,
     this.currentIndex = 0,
     this.title,
+    this.titleStyle,  // Added parameter
     this.actions,
     this.showAppBar = true,
     this.showBottomBar = true,
@@ -53,7 +55,7 @@ class MainScaffold extends StatelessWidget {
         backgroundColor: Colors.black,
         elevation: 0,
         title: title != null
-            ? Text(title!)
+            ? Text(title!, style: titleStyle)  // Apply titleStyle here
             : Container(
           alignment: Alignment.centerLeft,
           child: ColorFiltered(

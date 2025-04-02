@@ -40,7 +40,13 @@ dependencies:
   firebase_storage: ^12.4.5
   firebase_messaging: ^15.2.5
   google_sign_in:
-  the_apple_sign_in: 
+  the_apple_sign_in:
+  syncfusion_flutter_charts:
+  share_plus:
+  google_generative_ai:
+  provider:
+  firebase_vertexai:
+
 
 dev_dependencies:
   flutter_test:
