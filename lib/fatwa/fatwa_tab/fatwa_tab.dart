@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'app_color.dart';
 import 'fatwa_dialogs.dart';
 import 'fatwa_question_dialog.dart';
 
@@ -38,7 +39,10 @@ class _FatwaTabState extends State<FatwaTab> {
       debugPrint('AI initialization error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('AI servisi başlatılamadı')),
+          SnackBar(
+            content: const Text('AI servisi başlatılamadı'),
+            backgroundColor: Colors.red[800],
+          ),
         );
       }
     }
@@ -51,13 +55,440 @@ class _FatwaTabState extends State<FatwaTab> {
         .snapshots();
   }
 
+  Future<void> _deleteFatwa(String fatwaId) async {
+    try {
+      await _firestore.collection('fatwas').doc(fatwaId).delete();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Fetva başarıyla silindi'),
+            backgroundColor: Colors.green[800],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Silme işlemi başarısız: ${e.toString()}'),
+            backgroundColor: Colors.red[800],
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteAllMyFatwas() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final querySnapshot = await _firestore
+          .collection('fatwas')
+          .where('userId', isEqualTo: user.uid)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Silinecek fetva bulunamadı'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      final batch = _firestore.batch();
+      for (final doc in querySnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${querySnapshot.docs.length} fetva başarıyla silindi'),
+            backgroundColor: Colors.green[800],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Toplu silme işlemi başarısız: ${e.toString()}'),
+            backgroundColor: Colors.red[800],
+          ),
+        );
+      }
+    }
+  }
+
+  void _showDeleteConfirmationDialog(String fatwaId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.lightBlue,
+        title: Text(
+          'Fetvayı Sil',
+          style: TextStyle(color: AppColors.primaryBlack),
+        ),
+        content: Text(
+          'Bu fetvayı silmek istediğinizden emin misiniz?',
+          style: TextStyle(color: AppColors.darkGray),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'VAZGEÇ',
+              style: TextStyle(color: AppColors.goldAccent),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.goldAccent,
+            ),
+            onPressed: () {
+              _deleteFatwa(fatwaId);
+              Navigator.pop(context);
+            },
+            child: Text(
+              'SİL',
+              style: TextStyle(color: AppColors.primaryBlack),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAllConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.lightBlue,
+        title: Text(
+          'Tüm Fetvaları Sil',
+          style: TextStyle(color: AppColors.primaryBlack),
+        ),
+        content: Text(
+          'Tüm fetvalarınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+          style: TextStyle(color: AppColors.darkGray),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'VAZGEÇ',
+              style: TextStyle(color: AppColors.goldAccent),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[800]!,
+            ),
+            onPressed: () {
+              _deleteAllMyFatwas();
+              Navigator.pop(context);
+            },
+            child: const Text(
+              'TÜMÜNÜ SİL',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentUser = _auth.currentUser;
+
+    return Scaffold(
+      backgroundColor: AppColors.lightBlue,
+      body: Column(
+        children: [
+          // Arama ve Yeni Soru Bölümü
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.primaryBlack,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // Arama Kutusu
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.whiteText,
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 5,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Fetva ara...',
+                      hintStyle: TextStyle(
+                          color: AppColors.darkGray.withOpacity(0.3)),
+                      prefixIcon: Icon(Icons.search, color: AppColors.goldAccent),
+                      suffixIcon: IconButton(
+                        icon: Icon(Icons.clear, color: AppColors.goldAccent),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                    ),
+                    style: const TextStyle(fontSize: 16),
+                    onChanged: (value) => setState(() => _searchQuery = value),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Butonlar
+                Row(
+                  children: [
+                    // Yeni Soru Butonu
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: Icon(Icons.add_circle, color: AppColors.primaryBlack),
+                        label: Text('YENİ SORU',
+                          style: TextStyle(
+                            color: AppColors.primaryBlack,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        onPressed: () => _showAskFatwaDialog(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.goldAccent,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          elevation: 5,
+                          shadowColor: AppColors.goldAccent.withOpacity(0.3),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Tümünü Sil Butonu
+                    if (currentUser != null)
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red[800],
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          elevation: 5,
+                        ),
+                        onPressed: _showDeleteAllConfirmationDialog,
+                        child: Icon(Icons.delete_forever, color: Colors.white),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Fetva Listesi
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.only(top: 10),
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _getFatwas(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                      child: CircularProgressIndicator(color: AppColors.goldAccent),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red, size: 50),
+                          const SizedBox(height: 20),
+                          Text(
+                            'Fetvalar yüklenirken hata oluştu',
+                            style: TextStyle(
+                              color: AppColors.primaryBlack,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Lütfen internet bağlantınızı kontrol edip tekrar deneyin',
+                            style: TextStyle(
+                              color: AppColors.darkGray,
+                              fontSize: 14,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final filteredFatwas = snapshot.data!.docs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final question = data['question']?.toString().toLowerCase() ?? '';
+                    return question.contains(_searchQuery.toLowerCase());
+                  }).toList();
+
+                  if (filteredFatwas.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search_off, color: AppColors.goldAccent, size: 50),
+                          const SizedBox(height: 20),
+                          Text(
+                            _searchQuery.isEmpty
+                                ? 'Henüz fetva eklenmemiş'
+                                : 'Aramanızla eşleşen fetva bulunamadı',
+                            style: TextStyle(
+                              color: AppColors.primaryBlack,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    itemCount: filteredFatwas.length,
+                    itemBuilder: (context, index) {
+                      final doc = filteredFatwas[index];
+                      final fatwa = doc.data() as Map<String, dynamic>;
+                      final question = fatwa['question']?.toString() ?? 'Soru yok';
+                      final answer = fatwa['answer']?.toString() ?? '';
+                      final truncatedAnswer = answer.length > 80
+                          ? '${answer.substring(0, 80)}...'
+                          : answer;
+                      final isMyFatwa = currentUser?.uid == fatwa['userId'];
+
+                      return Container(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.whiteText,
+                          borderRadius: BorderRadius.circular(15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 5,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Stack(
+                          children: [
+                            ListTile(
+                              contentPadding: const EdgeInsets.all(16),
+                              title: Text(
+                                question,
+                                style: TextStyle(
+                                  color: AppColors.primaryBlack,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Text(
+                                  truncatedAnswer,
+                                  style: TextStyle(
+                                    color: AppColors.darkGray,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                              trailing: fatwa['status'] == 'under_review'
+                                  ? Icon(Icons.verified, color: Colors.orange)
+                                  : Icon(Icons.verified_user, color: AppColors.goldAccent),
+                              onTap: () => _showFatwaResponse(context, fatwa),
+                            ),
+                            if (isMyFatwa)
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: IconButton(
+                                  icon: Icon(Icons.delete, color: Colors.red[800]),
+                                  onPressed: () => _showDeleteConfirmationDialog(doc.id),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAskFatwaDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => FatwaQuestionDialog(
+        onSubmit: (question) => _submitQuestion(question),
+      ),
+    );
+  }
+
+  void _showFatwaResponse(BuildContext context, Map<String, dynamic> fatwa) {
+    showDialog(
+      context: context,
+      builder: (context) => FatwaResponseDialog(fatwa: fatwa),
+    );
+  }
+
   Future<void> _submitQuestion(String question) async {
     try {
       final user = _auth.currentUser;
       if (user == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Lütfen giriş yapın')),
+            SnackBar(
+              content: const Text('Lütfen giriş yapın'),
+              backgroundColor: Colors.red[800],
+            ),
           );
         }
         return;
@@ -81,14 +512,20 @@ class _FatwaTabState extends State<FatwaTab> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Fetva başarıyla oluşturuldu')),
+          SnackBar(
+            content: const Text('Fetva başarıyla oluşturuldu'),
+            backgroundColor: Colors.green[800],
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: ${e.toString()}')),
+          SnackBar(
+            content: Text('Hata: ${e.toString()}'),
+            backgroundColor: Colors.red[800],
+          ),
         );
       }
     }
@@ -180,114 +617,5 @@ class _FatwaTabState extends State<FatwaTab> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Fetva ara...',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () {
-                  _searchController.clear();
-                  setState(() => _searchQuery = '');
-                },
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-            ),
-            onChanged: (value) => setState(() => _searchQuery = value),
-          ),
-        ),
-
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.add),
-              label: const Text('Yeni Fetva Sorusu Sor'),
-              onPressed: () => _showAskFatwaDialog(context),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-              ),
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 8.0),
-
-        Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: _getFatwas(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (snapshot.hasError) {
-                return Center(child: Text('Hata: ${snapshot.error}'));
-              }
-
-              final filteredFatwas = snapshot.data!.docs.where((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                final question = data['question']?.toString().toLowerCase() ?? '';
-                return question.contains(_searchQuery.toLowerCase());
-              }).toList();
-
-              return ListView.builder(
-                itemCount: filteredFatwas.length,
-                itemBuilder: (context, index) {
-                  final fatwa = filteredFatwas[index].data() as Map<String, dynamic>;
-                  final answer = fatwa['answer']?.toString() ?? '';
-                  final truncatedAnswer = answer.length > 50
-                      ? '${answer.substring(0, 50)}...'
-                      : answer;
-
-                  return Card(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 8.0,
-                    ),
-                    child: ListTile(
-                      title: Text(fatwa['question']?.toString() ?? 'Soru yok'),
-                      subtitle: Text(truncatedAnswer),
-                      trailing: fatwa['status'] == 'under_review'
-                          ? const Icon(Icons.warning, color: Colors.orange)
-                          : null,
-                      onTap: () => _showFatwaResponse(context, fatwa),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showAskFatwaDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => FatwaQuestionDialog(
-        onSubmit: (question) => _submitQuestion(question),
-      ),
-    );
-  }
-
-  void _showFatwaResponse(BuildContext context, Map<String, dynamic> fatwa) {
-    showDialog(
-      context: context,
-      builder: (context) => FatwaResponseDialog(fatwa: fatwa),
-    );
   }
 }
