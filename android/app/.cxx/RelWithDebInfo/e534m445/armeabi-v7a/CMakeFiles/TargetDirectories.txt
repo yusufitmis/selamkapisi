@@ -1,0 +1,2 @@
+C:/Users/yusuf/Desktop/selamkapisi/android/app/.cxx/RelWithDebInfo/e534m445/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/yusuf/Desktop/selamkapisi/android/app/.cxx/RelWithDebInfo/e534m445/armeabi-v7a/CMakeFiles/rebuild_cache.dir
