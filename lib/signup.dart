@@ -42,10 +42,12 @@ class _SignUpState extends State<SignUp> {
       });
 
       try {
+        // Önce emailin kullanılıp kullanılmadığını kontrol etmek için doğrudan kayıt işlemi yapıyoruz
         UserCredential userCredential = await FirebaseAuth.instance
             .createUserWithEmailAndPassword(
             email: mailcontroller.text, password: passwordcontroller.text);
 
+        // Kayıt başarılı olduysa devam et
         await userCredential.user!.sendEmailVerification();
 
         Map<String, dynamic> userInfoMap = {
@@ -83,6 +85,7 @@ class _SignUpState extends State<SignUp> {
 
         Navigator.pushReplacement(
             context, MaterialPageRoute(builder: (context) => LogIn()));
+
       } on FirebaseAuthException catch (e) {
         setState(() {
           _isLoading = false;
@@ -92,7 +95,36 @@ class _SignUpState extends State<SignUp> {
         if (e.code == 'weak-password') {
           errorMessage = "Şifre en az 6 karakter olmalı";
         } else if (e.code == "email-already-in-use") {
+          // Email zaten kullanımda, Google ile bağlantılı olup olmadığını kontrol et
           errorMessage = "Bu email zaten kullanılıyor";
+
+          // Kullanıcıya Google ile giriş yapmayı öner
+          if (context.mounted) {
+            bool? useGoogle = await showDialog<bool>(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: Text('Email Zaten Kayıtlı'),
+                  content: Text('Bu email adresi zaten kayıtlı. Google ile giriş yapmak ister misiniz?'),
+                  actions: <Widget>[
+                    TextButton(
+                      child: Text('Hayır'),
+                      onPressed: () => Navigator.of(context).pop(false),
+                    ),
+                    TextButton(
+                      child: Text('Evet'),
+                      onPressed: () => Navigator.of(context).pop(true),
+                    ),
+                  ],
+                );
+              },
+            );
+
+            if (useGoogle == true) {
+              await AuthMethods().signInWithGoogle(context);
+              return;
+            }
+          }
         } else if (e.code == "invalid-email") {
           errorMessage = "Geçersiz email formatı";
         }

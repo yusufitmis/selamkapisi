@@ -26,10 +26,16 @@ class AuthMethods {
         idToken: googleAuth.idToken,
       );
 
-      final UserCredential userCredential = await auth.signInWithCredential(credential);
+      User? currentUser = auth.currentUser;
 
-      if (userCredential.user != null) {
-        if (context.mounted) {
+      if (currentUser != null && !currentUser.isAnonymous) {
+        // Kullanıcı zaten giriş yapmış, hesapları birleştir
+        await _linkAccounts(currentUser, credential, context);
+      } else {
+        // Normal giriş işlemi
+        final UserCredential userCredential = await auth.signInWithCredential(credential);
+
+        if (userCredential.user != null && context.mounted) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const Dashboard()),
                 (route) => false,
@@ -39,10 +45,103 @@ class AuthMethods {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Google ile giriş hatası: $e')),
+          SnackBar(content: Text('Google ile giriş hatası: ${e.toString()}')),
         );
       }
       debugPrint('Google sign in error: $e');
+    }
+  }
+
+  Future<void> _linkAccounts(User currentUser, AuthCredential credential, BuildContext context) async {
+    try {
+      // Hesapları birleştir
+      await currentUser.linkWithCredential(credential);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hesaplar başarıyla birleştirildi')),
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const Dashboard()),
+              (route) => false,
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'provider-already-linked') {
+        // Google hesabı zaten bağlı, normal giriş yap
+        await auth.signInWithCredential(credential);
+        if (context.mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const Dashboard()),
+                (route) => false,
+          );
+        }
+      } else if (e.code == 'credential-already-in-use') {
+        // Bu Google hesabı başka bir kullanıcıya bağlı
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Bu Google hesabı başka bir kullanıcıya bağlı')),
+          );
+        }
+        // Kullanıcıya hesapları birleştirme seçeneği sunabilirsiniz
+        await _handleAccountMerge(context, credential);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Hata: ${e.message}')),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata oluştu: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleAccountMerge(BuildContext context, AuthCredential credential) async {
+    bool? mergeAccounts = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Hesap Çakışması'),
+          content: Text('Bu Google hesabı başka bir kullanıcıya bağlı. Hesapları birleştirmek istiyor musunuz?'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('İptal'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: Text('Birleştir'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (mergeAccounts == true) {
+      try {
+        // Önce mevcut kullanıcıyı çıkış yaptır
+        await auth.signOut();
+        // Google ile yeniden giriş yap
+        await auth.signInWithCredential(credential);
+
+        if (context.mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const Dashboard()),
+                (route) => false,
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Hata: ${e.toString()}')),
+          );
+        }
+      }
     }
   }
 
