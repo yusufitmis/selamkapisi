@@ -25,7 +25,7 @@ class MainScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final authMethods = AuthMethods();
 
-    void _handleTabChange(int index) {
+    void handleTabChange(int index) {  // _ yerine normal isim kullanıldı
       if (currentIndex == index) return;
 
       switch (index) {
@@ -39,13 +39,11 @@ class MainScaffold extends StatelessWidget {
           Navigator.pushReplacementNamed(context, '/coach');
           break;
         case 3:
-          Navigator.pushReplacementNamed(context, '/tasks');
-          break;
-        case 4:
           Navigator.pushReplacementNamed(context, '/profile');
           break;
       }
     }
+
 
     return Scaffold(
       backgroundColor: Colors.grey[900],
@@ -92,7 +90,7 @@ class MainScaffold extends StatelessWidget {
         currentIndex: currentIndex,
         selectedItemColor: Colors.amber,
         unselectedItemColor: Colors.grey,
-        onTap: _handleTabChange,
+        onTap: handleTabChange,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
@@ -106,10 +104,7 @@ class MainScaffold extends StatelessWidget {
             icon: Icon(Icons.psychology),
             label: 'Koç',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.task),
-            label: 'Görevler',
-          ),
+
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Profil',

@@ -11,7 +11,7 @@ class FatwaPage extends StatefulWidget {
 }
 
 class _FatwaPageState extends State<FatwaPage> {
-  int _currentIndex = 1;
+  final _currentIndex = 1;
   int _selectedTab = 0;
 
   @override
@@ -30,7 +30,7 @@ class _FatwaPageState extends State<FatwaPage> {
           Expanded(
             child: _selectedTab == 0
                 ? const FatwaTab()
-                : const PreachersTab(),
+                :  PreachersTab(),
           ),
         ],
       ),

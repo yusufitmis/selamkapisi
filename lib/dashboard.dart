@@ -23,10 +23,7 @@ class _DashboardState extends State<Dashboard> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            DailyQuoteBanner(
-              onAskQuestion: _showQuestionDialog,
-              onShowSchedule: _showPreacherSchedule,
-            ),
+            DailyQuoteBanner(),
             PersonalInfoPanel(
               currentIndex: _currentIndex,
               onIndexChanged: (index) {
@@ -36,18 +33,12 @@ class _DashboardState extends State<Dashboard> {
               },
             ),
             const QuickAccessButtons(),
-            const PreachersSection(),
+            PreachersSection(),
           ],
         ),
       ),
     );
   }
 
-  void _showQuestionDialog() {
-    // ... (Aynı dialog kodu)
-  }
 
-  void _showPreacherSchedule() {
-    // ... (Aynı dialog kodu)
-  }
 }

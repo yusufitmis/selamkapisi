@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-
 import 'app_color.dart';
 
 class FatwaQuestionDialog extends StatefulWidget {
   final Function(String) onSubmit;
+  final int maxLength;
 
   const FatwaQuestionDialog({
     super.key,
     required this.onSubmit,
+    required this.maxLength,
   });
 
   @override
@@ -17,6 +18,18 @@ class FatwaQuestionDialog extends StatefulWidget {
 class _FatwaQuestionDialogState extends State<FatwaQuestionDialog> {
   final _formKey = GlobalKey<FormState>();
   final _questionController = TextEditingController();
+  int _remainingChars = 200;
+
+  @override
+  void initState() {
+    super.initState();
+    _remainingChars = widget.maxLength;
+    _questionController.addListener(() {
+      setState(() {
+        _remainingChars = widget.maxLength - _questionController.text.length;
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +49,6 @@ class _FatwaQuestionDialogState extends State<FatwaQuestionDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Başlık
                 Row(
                   children: [
                     Icon(Icons.live_help, color: AppColors.goldAccent, size: 30),
@@ -53,10 +65,9 @@ class _FatwaQuestionDialogState extends State<FatwaQuestionDialog> {
                 ),
                 const SizedBox(height: 20),
 
-                // Açıklama
                 Text(
                   'Dini konularda merak ettiğiniz soruları buradan sorabilirsiniz. '
-                      'Sorunuzu mümkün olduğunca detaylı yazınız.',
+                      'Maksimum ${widget.maxLength} karakter kullanabilirsiniz.',
                   style: TextStyle(
                     color: AppColors.darkGray,
                     fontSize: 15,
@@ -65,14 +76,25 @@ class _FatwaQuestionDialogState extends State<FatwaQuestionDialog> {
                 ),
                 const SizedBox(height: 20),
 
-                // Soru Giriş Alanı
+                // Karakter sayacı
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    'Kalan karakter: $_remainingChars',
+                    style: TextStyle(
+                      color: _remainingChars < 20 ? Colors.red : AppColors.darkGray,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
                 Container(
                   decoration: BoxDecoration(
                     color: AppColors.whiteText,
                     borderRadius: BorderRadius.circular(15),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: (0.1 * 255)),
+                        color: Colors.black.withOpacity(0.1),
                         blurRadius: 5,
                         offset: const Offset(0, 3),
                       ),
@@ -81,16 +103,21 @@ class _FatwaQuestionDialogState extends State<FatwaQuestionDialog> {
                   child: TextFormField(
                     controller: _questionController,
                     maxLines: 5,
+                    maxLength: widget.maxLength,
                     style: TextStyle(color: AppColors.primaryBlack),
                     decoration: InputDecoration(
-                      hintText: 'Örneğin: "Kadınların iş hayatında çalışması caiz midir?"',
-                      hintStyle: TextStyle(color: AppColors.darkGray.withValues(alpha: (0.6 * 255))),
+                      hintText: 'Örneğin: "Sigara içmek haram mıdır?"',
+                      hintStyle: TextStyle(color: AppColors.darkGray.withOpacity(0.6)),
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.all(15),
+                      counterText: '',
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Lütfen bir soru yazın';
+                      }
+                      if (value.length > widget.maxLength) {
+                        return 'Maksimum ${widget.maxLength} karakter kullanabilirsiniz';
                       }
                       return null;
                     },
@@ -98,11 +125,9 @@ class _FatwaQuestionDialogState extends State<FatwaQuestionDialog> {
                 ),
                 const SizedBox(height: 25),
 
-                // Butonlar
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    // İptal Butonu
                     Expanded(
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
@@ -124,8 +149,6 @@ class _FatwaQuestionDialogState extends State<FatwaQuestionDialog> {
                       ),
                     ),
                     const SizedBox(width: 15),
-
-                    // Gönder Butonu
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(

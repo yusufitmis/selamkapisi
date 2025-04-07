@@ -4,135 +4,164 @@ class ScoreCard extends StatelessWidget {
   final double score;
   final double averageScore;
   final VoidCallback onComparePressed;
+  final int weeksLeft;
+  final int currentWeek;
+
 
   const ScoreCard({
     super.key,
     required this.score,
     required this.averageScore,
     required this.onComparePressed,
+    required this.weeksLeft,
+    required this.currentWeek,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bool isAboveAverage = score > averageScore;
+    final double difference = (score - averageScore).abs();
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
+      color: Colors.white,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildScoreText(),
-                _buildProgressCircle(),
-              ],
+            // Başlık
+            const Text(
+              'DİNİ HAYAT PUANINIZ',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.deepOrange,
+              ),
             ),
-            const SizedBox(height: 10),
-            _buildLinearProgress(),
             const SizedBox(height: 8),
-            _buildComparisonRow(),
+
+            // Ana Puan Gösterimi
+            Center(
+              child: Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: _getScoreColor(score),
+                    width: 8,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      score.toStringAsFixed(0),
+                      style: const TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      '/100',
+                      style: TextStyle(
+                        fontSize: 20,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // İlerleme Çubukları
+            _buildProgressItem(
+                'Hafta İlerleme',
+                ((currentWeek - 1) / 6).clamp(0.0, 1.0), // currentWeek 1-6 arası olduğu için
+                '$currentWeek/6 hafta'
+            ),
+            const SizedBox(height: 12),
+            _buildProgressItem('Puan İlerleme', score/100, '${score.toStringAsFixed(0)}/100 puan'),
+            const SizedBox(height: 16),
+
+            // Karşılaştırma Bilgisi
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isAboveAverage ? Colors.green[50] : Colors.red[50],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isAboveAverage ? Icons.arrow_upward : Icons.arrow_downward,
+                    color: isAboveAverage ? Colors.green : Colors.red,
+                    size: 30,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Çevrenizdekilerden ${difference.toStringAsFixed(0)} puan ${isAboveAverage ? 'yüksek' : 'düşük'}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Buton
+
           ],
         ),
       ),
     );
   }
 
-  Widget _buildScoreText() {
+  Widget _buildProgressItem(String label, double value, String text) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'HELAL YAŞAM PUANI',
+          label,
           style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: Colors.amber[300],
+            fontSize: 16,
+            color: Colors.grey[700],
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          score.toStringAsFixed(1),
-          style: const TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProgressCircle() {
-    return SizedBox(
-      width: 100,
-      height: 100,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CircularProgressIndicator(
-            value: score / 100,
-            strokeWidth: 10,
-            backgroundColor: Colors.grey[300],
-            valueColor: AlwaysStoppedAnimation<Color>(
-              _getScoreColor(score),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              flex: 4,
+              child: LinearProgressIndicator(
+                value: value,
+                backgroundColor: Colors.grey[300],
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  _getScoreColor(value * 100),
+                ),
+                minHeight: 12,
+                borderRadius: BorderRadius.circular(6),
+              ),
             ),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '${(score - averageScore).toStringAsFixed(1)}',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: score > averageScore ? Colors.green : Colors.red,
-                ),
+            const SizedBox(width: 10),
+            Text(
+              text,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
               ),
-              Text(
-                'Ortalamadan',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLinearProgress() {
-    return LinearProgressIndicator(
-      value: score / 100,
-      backgroundColor: Colors.grey[300],
-      valueColor: AlwaysStoppedAnimation<Color>(
-        _getScoreColor(score),
-      ),
-      minHeight: 8,
-      borderRadius: BorderRadius.circular(4),
-    );
-  }
-
-  Widget _buildComparisonRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          'Çevrenizdeki ortalama: ${averageScore.toStringAsFixed(1)}',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
-        TextButton(
-          onPressed: onComparePressed,
-          child: const Text(
-            'Detaylı Karşılaştırma',
-            style: TextStyle(color: Colors.amber),
-          ),
+            ),
+          ],
         ),
       ],
     );

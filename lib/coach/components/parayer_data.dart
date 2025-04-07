@@ -6,7 +6,7 @@ class PrayerData {
   final bool maghrib;
   final bool isha;
 
-  PrayerData({
+  const PrayerData({
     required this.day,
     required this.fajr,
     required this.dhuhr,
@@ -15,13 +15,29 @@ class PrayerData {
     required this.isha,
   });
 
+  factory PrayerData.fromMap(Map<String, dynamic> map) {
+    return PrayerData(
+      day: map['day'] ?? '',
+      fajr: map['fajr'] ?? false,
+      dhuhr: map['dhuhr'] ?? false,
+      asr: map['asr'] ?? false,
+      maghrib: map['maghrib'] ?? false,
+      isha: map['isha'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'day': day,
+      'fajr': fajr,
+      'dhuhr': dhuhr,
+      'asr': asr,
+      'maghrib': maghrib,
+      'isha': isha,
+    };
+  }
+
   int get completedPrayers {
-    int count = 0;
-    if (fajr) count++;
-    if (dhuhr) count++;
-    if (asr) count++;
-    if (maghrib) count++;
-    if (isha) count++;
-    return count;
+    return [fajr, dhuhr, asr, maghrib, isha].where((e) => e).length;
   }
 }

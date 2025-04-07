@@ -46,6 +46,15 @@ dependencies:
   google_generative_ai:
   provider:
   firebase_vertexai:
+  video_player:
+  image_picker:
+  cached_network_image:
+  chewie:
+  shared_preferences:
+  intl:
+  firebase_remote_config:
+  flutter_launcher_icons:
+  url_launcher:
 
 
 dev_dependencies:
@@ -104,3 +113,7 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/selam_kapisi_logo.png"

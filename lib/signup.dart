@@ -1,8 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:selamkapisi/service/auth.dart';
-
-import 'home.dart';
+import 'package:selamkapisi/service/database.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'login.dart';
 
 class SignUp extends StatefulWidget {
@@ -19,36 +21,110 @@ class _SignUpState extends State<SignUp> {
   TextEditingController mailcontroller = TextEditingController();
 
   final _formkey = GlobalKey<FormState>();
+  bool _isLoading = false;
+  bool _termsAccepted = false;
 
   registration() async {
-    if (password != null && namecontroller.text != "" && mailcontroller.text != "") {
+    if (!_termsAccepted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: Colors.red[400],
+        content: Text(
+          "Devam etmek için sözleşmeleri kabul etmelisiniz.",
+          style: TextStyle(fontSize: 16.0, color: Colors.white),
+        ),
+      ));
+      return;
+    }
+
+    if (_formkey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+
       try {
         UserCredential userCredential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(email: email, password: password);
+            .createUserWithEmailAndPassword(
+            email: mailcontroller.text, password: passwordcontroller.text);
+
+        await userCredential.user!.sendEmailVerification();
+
+        Map<String, dynamic> userInfoMap = {
+          "name": namecontroller.text,
+          "email": mailcontroller.text,
+          "id": userCredential.user!.uid,
+          "imgUrl": "https://image-cdn.artland.com/eyJidWNrZXQiOiJhcnRsYW5kLXVwbG9hZHMiLCJrZXkiOiJ1c2Vycy9jam9oMHg4ZG4xdjYzMDg4MDJmdXhiNW00L3Byb2ZpbGVJbWFnZS02OTEwNDUxOS1mMmExLTRkZTktODIxMC1hMDEwODMyODQ3MzMuanBnIiwiZWRpdHMiOnsianBlZyI6eyJxdWFsaXR5Ijo4MH0sInJvdGF0ZSI6bnVsbCwicmVzaXplIjp7IndpZHRoIjoxMjAwLCJoZWlnaHQiOjEyMDAsImZpdCI6Imluc2lkZSJ9fX0=",
+        };
+
+        Map<String, dynamic> usersDataMap = {
+          "charityAmount": 0,
+          "displayName": namecontroller.text,
+          "email": mailcontroller.text,
+          "photoUrl": "",
+          "prayerCount": 0,
+          "quranPages": 0,
+          "socialPoints": 0,
+          "totalScore": 0,
+        };
+
+        await DatabaseMethods().addUser(userCredential.user!.uid, userInfoMap);
+        await FirebaseFirestore.instance
+            .collection("users")
+            .doc(userCredential.user!.uid)
+            .set(usersDataMap);
+
+        if (!mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             backgroundColor: Colors.amber[800],
             content: Text(
-              "Registered Successfully",
+              "Kayıt başarılı! Lütfen emailinizi doğrulayın.",
               style: TextStyle(fontSize: 20.0, color: Colors.white),
             )));
-        Navigator.push(context, MaterialPageRoute(builder: (context) => Home()));
+
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (context) => LogIn()));
       } on FirebaseAuthException catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        String errorMessage = "Kayıt sırasında bir hata oluştu";
         if (e.code == 'weak-password') {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              backgroundColor: Colors.amber[800],
-              content: Text(
-                "Password Provided is too Weak",
-                style: TextStyle(fontSize: 18.0, color: Colors.white),
-              )));
+          errorMessage = "Şifre en az 6 karakter olmalı";
         } else if (e.code == "email-already-in-use") {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              backgroundColor: Colors.amber[800],
-              content: Text(
-                "Account Already exists",
-                style: TextStyle(fontSize: 18.0, color: Colors.white),
-              )));
+          errorMessage = "Bu email zaten kullanılıyor";
+        } else if (e.code == "invalid-email") {
+          errorMessage = "Geçersiz email formatı";
         }
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            backgroundColor: Colors.amber[800],
+            content: Text(
+              errorMessage,
+              style: TextStyle(fontSize: 18.0, color: Colors.white),
+            )));
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            backgroundColor: Colors.amber[800],
+            content: Text(
+              "Hata: ${e.toString()}",
+              style: TextStyle(fontSize: 18.0, color: Colors.white),
+            )));
       }
+    }
+  }
+
+  Future<void> _launchURL(String url) async {
+    if (!await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)) {
+      throw 'URL açılamıyor: $url';
     }
   }
 
@@ -91,7 +167,7 @@ class _SignUpState extends State<SignUp> {
                         borderRadius: BorderRadius.circular(15),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.amber.withOpacity(0.1),
+                            color: Colors.amber.withAlpha((255 * 0.1).round()),
                             blurRadius: 10,
                             offset: Offset(0, 5),
                           ),
@@ -124,7 +200,7 @@ class _SignUpState extends State<SignUp> {
                         borderRadius: BorderRadius.circular(15),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.amber.withOpacity(0.1),
+                            color: Colors.amber..withAlpha((255 * 0.1).round()),
                             blurRadius: 10,
                             offset: Offset(0, 5),
                           ),
@@ -133,7 +209,10 @@ class _SignUpState extends State<SignUp> {
                       child: TextFormField(
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Lütfen E-mail adresinizi girin';
+                            return 'Lütfen email adresinizi girin';
+                          }
+                          if (!value.contains('@') || !value.contains('.')) {
+                            return 'Geçerli bir email adresi girin';
                           }
                           return null;
                         },
@@ -157,7 +236,7 @@ class _SignUpState extends State<SignUp> {
                         borderRadius: BorderRadius.circular(15),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.amber.withOpacity(0.1),
+                            color: Colors.amber.withAlpha((255 * 0.1).round()),
                             blurRadius: 10,
                             offset: Offset(0, 5),
                           ),
@@ -168,6 +247,9 @@ class _SignUpState extends State<SignUp> {
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Lütfen şifrenizi girin';
+                          }
+                          if (value.length < 6) {
+                            return 'Şifre en az 6 karakter olmalı';
                           }
                           return null;
                         },
@@ -184,18 +266,63 @@ class _SignUpState extends State<SignUp> {
                         ),
                       ),
                     ),
+                    SizedBox(height: 15.0),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Checkbox(
+                          value: _termsAccepted,
+                          onChanged: (value) {
+                            setState(() {
+                              _termsAccepted = value ?? false;
+                            });
+                          },
+                          activeColor: Colors.amber,
+                        ),
+                        Expanded(
+                          child: RichText(
+                            text: TextSpan(
+                              text: "Kullanım Koşulları",
+                              style: TextStyle(
+                                  color: Colors.amber,
+                                  fontWeight: FontWeight.bold,
+                                  decoration: TextDecoration.underline),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () {
+                                  _launchURL("https://github.com/yusufitmis/selam_kapisi/blob/main/terms-of-service.md");
+                                },
+                              children: [
+                                TextSpan(
+                                  text: " ve ",
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.normal,
+                                      decoration: TextDecoration.none),
+                                ),
+                                TextSpan(
+                                  text: "Gizlilik Sözleşmesini",
+                                  style: TextStyle(
+                                      color: Colors.amber,
+                                      fontWeight: FontWeight.bold,
+                                      decoration: TextDecoration.underline),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () {
+                                      _launchURL("https://github.com/yusufitmis/selam_kapisi/blob/main/privacy-policy.md");
+                                    },
+                                ),
+                                TextSpan(
+                                  text: " okudum ve kabul ediyorum.",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                     SizedBox(height: 20.0),
                     GestureDetector(
-                      onTap: () {
-                        if (_formkey.currentState!.validate()) {
-                          setState(() {
-                            email = mailcontroller.text;
-                            name = namecontroller.text;
-                            password = passwordcontroller.text;
-                          });
-                          registration();
-                        }
-                      },
+                      onTap: _isLoading ? null : registration,
                       child: Container(
                         width: MediaQuery.of(context).size.width,
                         padding: EdgeInsets.symmetric(vertical: 16.0),
@@ -208,14 +335,19 @@ class _SignUpState extends State<SignUp> {
                           borderRadius: BorderRadius.circular(15),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.amber.withOpacity(0.3),
+                              color: Colors.amber.withAlpha((255 * 0.3).round()),
                               blurRadius: 10,
                               offset: Offset(0, 5),
                             ),
                           ],
                         ),
                         child: Center(
-                          child: Text(
+                          child: _isLoading
+                              ? CircularProgressIndicator(
+                            valueColor:
+                            AlwaysStoppedAnimation(Colors.black),
+                          )
+                              : Text(
                             "Kayıt Ol",
                             style: TextStyle(
                               color: Colors.black,
@@ -279,7 +411,7 @@ class _SignUpState extends State<SignUp> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.blueAccent.withOpacity(0.2),
+                            color: Colors.blueAccent.withAlpha((255 * 0.2).round()),
                             blurRadius: 10,
                             offset: Offset(0, 5),
                           ),
@@ -305,7 +437,7 @@ class _SignUpState extends State<SignUp> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.blueAccent.withOpacity(0.2),
+                            color: Colors.blueAccent.withAlpha((255 * 0.2).round()),
                             blurRadius: 10,
                             offset: Offset(0, 5),
                           ),

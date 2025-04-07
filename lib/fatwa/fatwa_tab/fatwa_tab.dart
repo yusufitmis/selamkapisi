@@ -22,6 +22,9 @@ class _FatwaTabState extends State<FatwaTab> {
   final TextEditingController _searchController = TextEditingController();
   late final GenerativeModel _model;
 
+  final int _maxQuestionLength = 200;
+  final int _maxAnswerLength = 1300;
+
   @override
   void initState() {
     super.initState();
@@ -49,8 +52,14 @@ class _FatwaTabState extends State<FatwaTab> {
   }
 
   Stream<QuerySnapshot> _getFatwas() {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return const Stream.empty();
+    }
+
     return _firestore
         .collection('fatwas')
+        .where('userId', isEqualTo: user.uid)
         .orderBy('timestamp', descending: true)
         .snapshots();
   }
@@ -223,7 +232,7 @@ class _FatwaTabState extends State<FatwaTab> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withAlpha((255 * 0.3).round()),
                   blurRadius: 10,
                   offset: const Offset(0, 5),
                 ),
@@ -238,7 +247,7 @@ class _FatwaTabState extends State<FatwaTab> {
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
+                        color: Colors.black.withAlpha((255 * 0.3).round()),
                         blurRadius: 5,
                         offset: const Offset(0, 3),
                       ),
@@ -249,7 +258,7 @@ class _FatwaTabState extends State<FatwaTab> {
                     decoration: InputDecoration(
                       hintText: 'Fetva ara...',
                       hintStyle: TextStyle(
-                          color: AppColors.darkGray.withOpacity(0.3)),
+                          color: AppColors.darkGray.withAlpha((255 * 0.3).round())),
                       prefixIcon: Icon(Icons.search, color: AppColors.goldAccent),
                       suffixIcon: IconButton(
                         icon: Icon(Icons.clear, color: AppColors.goldAccent),
@@ -288,7 +297,7 @@ class _FatwaTabState extends State<FatwaTab> {
                             borderRadius: BorderRadius.circular(30),
                           ),
                           elevation: 5,
-                          shadowColor: AppColors.goldAccent.withOpacity(0.3),
+                          shadowColor: AppColors.goldAccent.withAlpha((255 * 0.3).round()),
                         ),
                       ),
                     ),
@@ -407,7 +416,7 @@ class _FatwaTabState extends State<FatwaTab> {
                           borderRadius: BorderRadius.circular(15),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withAlpha((255 * 0.1).round()),
                               blurRadius: 5,
                               offset: const Offset(0, 3),
                             ),
@@ -467,6 +476,7 @@ class _FatwaTabState extends State<FatwaTab> {
     showDialog(
       context: context,
       builder: (context) => FatwaQuestionDialog(
+        maxLength: _maxQuestionLength,
         onSubmit: (question) => _submitQuestion(question),
       ),
     );
@@ -494,6 +504,10 @@ class _FatwaTabState extends State<FatwaTab> {
         return;
       }
 
+      if (question.length > _maxQuestionLength) {
+        throw Exception('Soru maksimum $_maxQuestionLength karakter olmalıdır');
+      }
+
       setState(() => _isLoading = true);
 
       final docRef = _firestore.collection('fatwaRequests').doc();
@@ -509,14 +523,32 @@ class _FatwaTabState extends State<FatwaTab> {
       final verifiedResponse = _verifyCompliance(aiResponse);
       await _saveFinalResponse(docRef.id, question, verifiedResponse, user.uid);
 
+      // Yeni eklenen kısım: Cevap oluştuktan sonra otomatik göster
       if (mounted) {
         setState(() => _isLoading = false);
+
+        // Önce snackbar göster
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Fetva başarıyla oluşturuldu'),
             backgroundColor: Colors.green[800],
           ),
         );
+
+        // Sonra dialog göster
+        final fatwaData = {
+          'question': question,
+          'answer': verifiedResponse['answer'],
+          'references': _extractReferences(verifiedResponse['answer']),
+          'status': verifiedResponse['complianceCheck'] == "Approved"
+              ? "approved"
+              : "under_review",
+          'userId': user.uid,
+        };
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showFatwaResponse(context, fatwaData);
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -536,25 +568,33 @@ class _FatwaTabState extends State<FatwaTab> {
       const islamicComplianceRules = [
         "Kuran ayetleri",
         "Sahih hadisler",
+        "Dört mezhep görüşleri",
         "Fıkıh kitapları",
         "Alimlerin icması"
       ];
 
       final prompt = '''
-      Sen bir İslam alimisin ve dini konularda fetva veriyorsun.
-      Lütfen aşağıdaki soruyu yanıtlarken şu kaynaklara dayan:
-      ${islamicComplianceRules.join(", ")}.
+      Sen bir İslam alimisin ve dini konularda kısa, öz fetvalar veriyorsun.
+      Lütfen aşağıdaki soruyu en fazla $_maxAnswerLength karakterle yanıtla.
+      Yanıtını şu sırayla ve kısa tut:
+      1. Sorunun özeti (1 cümle)
+      2. Varsa ilgili Kuran ayetleri (sure ve ayet isimleriyle numaralarıyla) ayetin kendisini de yaz
+      3. Varsa sahih hadisler (kaynağıyla) hadisi yaz.
+      4. Dört büyük mezhebin (Hanefi, Şafii, Maliki, Hanbeli) kısaca her birinden bir cümle
+      5. Diğer güvenilir fıkıh kaynakları/icmalar (varsa) açıkla
+      6. Sonuç ve tavsiye (1-2 cümle)
+      
+      CEVAP TOPLAMDA $_maxAnswerLength KARAKTERİ GEÇMEMELİ!
       
       Soru: "$question"
-      
-      Cevabını şu şekilde ver:
-      1. Önce soruyu anladığını gösteren kısa bir giriş
-      2. Detaylı ve referanslı cevap (ayet ve hadis numaralarıyla)
-      3. Sonuç ve tavsiyeler
       ''';
 
       final response = await _model.generateContent([Content.text(prompt)]);
-      return response.text ?? "Cevap oluşturulamadı";
+      final fullResponse = response.text ?? "Cevap oluşturulamadı";
+
+      return fullResponse.length > _maxAnswerLength
+          ? fullResponse.substring(0, _maxAnswerLength)
+          : fullResponse;
     } catch (e) {
       debugPrint('AI generation error: $e');
       throw Exception('Fetva oluşturulamadı: $e');
@@ -562,7 +602,7 @@ class _FatwaTabState extends State<FatwaTab> {
   }
 
   Map<String, dynamic> _verifyCompliance(String response) {
-    const forbiddenTerms = ["haram", "küfür", "bid'at"];
+    const forbiddenTerms = ["küfür olan kelimeler", "islama hakaret edilen şeyler"];
     final warnings = forbiddenTerms.where((term) =>
         response.toLowerCase().contains(term.toLowerCase())
     ).toList();

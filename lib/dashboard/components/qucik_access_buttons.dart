@@ -15,7 +15,7 @@ class QuickAccessButtons extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withAlpha((255 * 0.5).round()),
             spreadRadius: 2,
             blurRadius: 5,
             offset: const Offset(0, 3),
@@ -48,7 +48,7 @@ class QuickAccessButtons extends StatelessWidget {
                 icon: Icons.chat,
                 label: 'Fetva Soralım',
                 color: Colors.green,
-                onTap: () => Navigator.pushNamed(context, '/fatwa'),
+                onTap: () => Navigator.pushReplacementNamed(context, '/fatwa'),
               ),
               _buildQuickAccessButton(
                 icon: Icons.book,
@@ -60,13 +60,13 @@ class QuickAccessButtons extends StatelessWidget {
                 icon: Icons.emoji_events,
                 label: 'Görevlerim',
                 color: Colors.purple,
-                onTap: () => Navigator.pushNamed(context, '/tasks'),
+                onTap: () => Navigator.pushReplacementNamed(context, '/coach'),
               ),
               _buildQuickAccessButton(
                 icon: Icons.person,
                 label: 'Profil',
                 color: Colors.orange,
-                onTap: () => Navigator.pushNamed(context, '/profile'),
+                onTap: () => Navigator.pushReplacementNamed(context, '/profile'),
               ),
             ],
           ),
@@ -90,12 +90,12 @@ class QuickAccessButtons extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              color.withOpacity(0.2),
-              color.withOpacity(0.1),
+              color.withAlpha((255 * 0.2).round()),
+              color.withAlpha((255 * 0.1).round()),
             ],
           ),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withAlpha((255 * 0.3).round())),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

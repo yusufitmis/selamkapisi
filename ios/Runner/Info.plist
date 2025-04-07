@@ -45,5 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+    <string>Fotoğraf çekmek için izin gerekiyor</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Fotoğraf seçmek için izin gerekiyor</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Video çekmek için mikrofon erişimi gerekiyor</string>
 </dict>
 </plist>
