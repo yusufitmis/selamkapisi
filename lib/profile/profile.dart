@@ -4,7 +4,7 @@ import 'package:selamkapisi/models/user_model.dart';
 import 'package:selamkapisi/profile/settings_section.dart';
 import '../dashboard/components/main_scaffold.dart';
 import '../service/user_service.dart';
-import 'package:url_launcher/url_launcher.dart'; // URL launch için import
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -14,7 +14,6 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-
   final Color _secondaryColor = const Color(0xFFD4AF37);
   final Color _textColor = Colors.white;
   final Color _cardColor = const Color(0xFF1E1E1E);
@@ -74,13 +73,29 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // URL'yi açan fonksiyon
+  // URL açmak için güvenli yöntem
   Future<void> _launchURL(String url) async {
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      throw 'URL açılamıyor: $url';
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+          webOnlyWindowName: '_blank', // For web
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Could not open $url")),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error opening URL: ${e.toString()}")),
+        );
+      }
     }
   }
 
@@ -99,11 +114,12 @@ class _ProfilePageState extends State<ProfilePage> {
             titleStyle: TextStyle(color: _textColor),
             actions: [
               IconButton(
-                icon: Icon(isEditing ? Icons.save : Icons.edit, color: _secondaryColor),
+                icon: Icon(
+                  isEditing ? Icons.save : Icons.edit,
+                  color: _secondaryColor,
+                ),
                 onPressed: () {
-                  if (isEditing) {
-                    _updateProfile();
-                  }
+                  if (isEditing) _updateProfile();
                   setState(() => isEditing = !isEditing);
                 },
               ),
@@ -114,10 +130,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 children: [
                   CircleAvatar(
                     radius: 50,
-                    backgroundColor: _secondaryColor.withAlpha((255 * 0.2).round()),
-                    backgroundImage: (_user.photoUrl != null && _user.photoUrl!.isNotEmpty && Uri.parse(_user.photoUrl!).isAbsolute)
+                    backgroundColor: _secondaryColor.withOpacity(0.2),
+                    backgroundImage: (_user.photoUrl != null &&
+                        _user.photoUrl!.isNotEmpty &&
+                        Uri.tryParse(_user.photoUrl!)?.isAbsolute == true)
                         ? NetworkImage(_user.photoUrl!)
-                        : const AssetImage('assets/images/default_profile.jpg'),
+                        : const AssetImage('assets/images/default_profile.jpg')
+                    as ImageProvider,
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -135,14 +154,16 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: TextFormField(
                         controller: _displayNameController,
                         decoration: InputDecoration(
-                            labelText: 'Ad Soyad',
-                            labelStyle: TextStyle(
-                              color: _textColor.withAlpha((255 * 0.7).round()),
-                            )
+                          labelText: 'Ad Soyad',
+                          labelStyle: TextStyle(
+                            color: _textColor.withOpacity(0.7),
+                          ),
                         ),
                         style: TextStyle(color: _textColor),
                         validator: (value) =>
-                        value?.isEmpty ?? true ? 'Lütfen ad soyad giriniz' : null,
+                        (value == null || value.isEmpty)
+                            ? 'Lütfen ad soyad giriniz'
+                            : null,
                       ),
                     )
                   else
@@ -157,11 +178,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: 8),
                   Text(
                     _user.email ?? 'Email yok',
-                    style: TextStyle(color: _textColor.withAlpha((255 * 0.7).round())),
+                    style: TextStyle(color: _textColor.withOpacity(0.7)),
                   ),
-                  SizedBox(height: 30, ),
+                  const SizedBox(height: 30),
                   const Divider(height: 32, color: Colors.grey),
-
 
                   SettingsSection(
                     cardColor: _cardColor,
@@ -173,22 +193,26 @@ class _ProfilePageState extends State<ProfilePage> {
                     onPressed: () async {
                       await FirebaseAuth.instance.signOut();
                       if (mounted) {
-                        Future.microtask(() {
-                          if (mounted) {
-                            Navigator.of(context).pushReplacementNamed('/login');
-                          }
-                        });
+                        Navigator.of(context)
+                            .pushReplacementNamed('/login');
                       }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red[800],
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 12,
+                      ),
                     ),
-                    child: const Text('Çıkış Yap', style: TextStyle(color: Colors.white)),
+                    child: const Text(
+                      'Çıkış Yap',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
 
-                  // Gizlilik sözleşmesi ve kullanım koşulları card'ları
                   const SizedBox(height: 30),
+
+                  // Gizlilik sözleşmesi ve kullanım koşulları
                   Card(
                     color: _cardColor,
                     elevation: 5,
@@ -197,9 +221,9 @@ class _ProfilePageState extends State<ProfilePage> {
                         'Gizlilik Sözleşmesi',
                         style: TextStyle(color: _textColor),
                       ),
-                      onTap: () {
-                        _launchURL('https://github.com/yusufitmis/selam_kapisi/blob/main/privacy-policy.md');
-                      },
+                      onTap: () => _launchURL(
+                        'https://github.com/yusufitmis/selam_kapisi/blob/main/privacy-policy.md',
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -211,9 +235,9 @@ class _ProfilePageState extends State<ProfilePage> {
                         'Kullanım Koşulları',
                         style: TextStyle(color: _textColor),
                       ),
-                      onTap: () {
-                        _launchURL('https://github.com/yusufitmis/selam_kapisi/blob/main/terms-of-service.md');
-                      },
+                      onTap: () => _launchURL(
+                        'https://github.com/yusufitmis/selam_kapisi/blob/main/terms-of-service.md',
+                      ),
                     ),
                   ),
                 ],
@@ -221,7 +245,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           );
         } else if (snapshot.hasError) {
-          return Center(child: Text('Hata: \${snapshot.error}'));
+          return Center(child: Text('Hata: ${snapshot.error}'));
         }
         return const Center(child: CircularProgressIndicator());
       },

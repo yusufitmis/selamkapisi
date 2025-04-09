@@ -55,6 +55,7 @@ dependencies:
   firebase_remote_config:
   flutter_launcher_icons:
   url_launcher:
+  google_mobile_ads: ^6.0.0
 
 
 dev_dependencies:
