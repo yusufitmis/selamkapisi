@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../dashboard/components/main_scaffold.dart';
+import '../google_ads.dart';
 import '../models/user_model.dart';
 import '../service/prayer_service.dart';
 import '../service/user_service.dart';
@@ -38,6 +40,15 @@ class _CoachPageState extends State<CoachPage> {
   // State
   late double _currentScore;
   late double _totalScore = 0;
+  final GoogleAds googleAds = GoogleAds();
+
+
+  @override
+  void dispose() {
+    googleAds.bannerAd?.dispose();
+    googleAds.interstitialAd?.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -46,6 +57,12 @@ class _CoachPageState extends State<CoachPage> {
     _prayerService = PrayerService();
     _currentScore = 0;
     _initializeAppData();
+    googleAds.loadInterstitialAd();
+    googleAds.loadBannerAd(adLoaded: () {
+      setState(() {
+
+      });
+    },);
   }
 
   int _calculateCurrentWeek() {
@@ -121,6 +138,9 @@ class _CoachPageState extends State<CoachPage> {
       if (!_isValidPrayerTime(prayer)) {
         throw 'Bu namazı işaretlemek için uygun vakit değil';
       }
+
+      // 3. Reklam göster
+      await googleAds.interstitialAd?.show();
 
       // 3. Firestore güncelleme
       await _prayerService.updatePrayer(day, prayer, true);
@@ -378,7 +398,19 @@ class _CoachPageState extends State<CoachPage> {
                         _isValidPrayerTime(prayer);
 
                     return InkWell(
-                      onTap: canMark ? () => _updatePrayerStatus(dayData.day, prayer) : null,
+                      onTap: canMark
+                          ? () async {
+                        // Reklam göster ve sonra namazı işaretle
+                        try {
+                          await googleAds.interstitialAd?.show();
+                          await _updatePrayerStatus(dayData.day, prayer);
+                        } catch (e) {
+                          debugPrint('Error showing ad: $e');
+                          // Reklam gösterilemezse direkt namazı işaretle
+                          await _updatePrayerStatus(dayData.day, prayer);
+                        }
+                      }
+                          : null,
                       child: Container(
                         color: isCompleted
                             ? _secondaryColor.withAlpha((255 * 0.3).round())
@@ -428,83 +460,121 @@ class _CoachPageState extends State<CoachPage> {
           initialData: const [],
         ),
       ],
-      child: Consumer2<UserModel?, List<PrayerData>?>(
-        builder: (context, user, prayerData, child) {
-          if (user == null || prayerData == null) {
-            return Center(child: CircularProgressIndicator(color: _secondaryColor));
-          }
+      child: Consumer2<UserModel?, List<PrayerData>?>(builder: (context, user, prayerData, child) {
+        if (user == null || prayerData == null) {
+          return Center(child: CircularProgressIndicator(color: _secondaryColor));
+        }
 
-          return FutureBuilder<double>(
-            future: _calculateScore(user),
-            builder: (context, snapshot) {
-              final score = snapshot.data ?? 0;
-              final averageScore = 65.3;
-              final currentWeek = _calculateCurrentWeek() + 1; // 1-6
-              final weeksLeft = _cycleLength - currentWeek;
+        return FutureBuilder<double>(
+          future: _calculateScore(user),
+          builder: (context, snapshot) {
+            final score = snapshot.data ?? 0;
+            final averageScore = 65.3;
+            final currentWeek = _calculateCurrentWeek() + 1;
+            final weeksLeft = _cycleLength - currentWeek;
 
-              return MainScaffold(
-                currentIndex: 2,
-                body: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ScoreCard(
-                        score: score,
-                        averageScore: averageScore,
-                        currentWeek: currentWeek,
-                        weeksLeft: weeksLeft,
-                        onComparePressed: () => Navigator.pushNamed(context, '/comparison'),
+            return MainScaffold(
+              currentIndex: 2,
+              body: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ScoreCard(
+                      score: score,
+                      averageScore: averageScore,
+                      currentWeek: currentWeek,
+                      weeksLeft: weeksLeft,
+                      onComparePressed: () => Navigator.pushNamed(context, '/comparison'),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'HAFTALIK NAMAZ TAKİBİ',
+                      style: TextStyle(
+                        color: _secondaryColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'HAFTALIK NAMAZ TAKİBİ',
-                        style: TextStyle(
-                          color: _secondaryColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                    ),
+                    const SizedBox(height: 10),
+                    _buildPrayerChart(prayerData),
+                    const SizedBox(height: 20),
+                    _buildPrayerGrid(prayerData),
+                    const SizedBox(height: 20),
+                    Card(
+                      color: _cardColor,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Icon(Icons.star, color: _secondaryColor, size: 30),
+                            const SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Toplam Puan',
+                                  style: TextStyle(color: _textColor.withAlpha((255 * 0.8).round())),
+                                ),
+                                Text(
+                                  (_totalScore + score).toStringAsFixed(0),
+                                  style: TextStyle(
+                                    color: _textColor,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      _buildPrayerChart(prayerData),
-                      const SizedBox(height: 20),
-                      _buildPrayerGrid(prayerData),
-                      const SizedBox(height: 20),
-                      Card(
-                        color: _cardColor,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              Icon(Icons.star, color: _secondaryColor, size: 30),
-                              const SizedBox(width: 10),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Toplam Puan', style: TextStyle(color: _textColor.withAlpha((255 * 0.8).round()))),
-                                  Text(
-                                    (_totalScore + score).toStringAsFixed(0),  // String interpolation'ı kaldırdık
-                                    style: TextStyle(
-                                      color: _textColor,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  )
-
-                                ],
-                              ),
-                            ],
+                    ),
+                    // Banner Ad - Fixed at bottom
+                    // Banner Ad - Modern görünümlü, altın renkli border ile
+                    // Banner Ad - Altın rengi arka plan, 3D etkisi ve modern görünüm
+                    if (googleAds.bannerAd != null)
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.amber.shade300, Colors.amber.shade700], // Altın renkli degrade arka plan
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16), // Yuvarlatılmış köşeler
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 10,
+                              offset: Offset(0, 4), // Gölgeli 3D etkisi
+                            ),
+                          ],
+                          border: Border.all(
+                            color: Colors.amber.shade900, // Koyu altın rengi border
+                            width: 3, // Daha belirgin border
                           ),
                         ),
+                        padding: const EdgeInsets.symmetric(vertical: 12), // Padding değerini arttırdım
+                        alignment: Alignment.center,
+                        margin: const EdgeInsets.symmetric(vertical: 15), // Üst ve alt margin
+                        child: SizedBox(
+                          width: googleAds.bannerAd!.size.width.toDouble(),
+                          height: googleAds.bannerAd!.size.height.toDouble(),
+                          child: AdWidget(ad: googleAds.bannerAd!),
+                        ),
                       ),
-                    ],
-                  ),
+
+
+                  ],
                 ),
-              );
-            },
-          );
-        },
-      ),
+              ),
+            );
+          },
+        );
+      }),
     );
   }
+
+
 }

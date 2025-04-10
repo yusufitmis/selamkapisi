@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import '../../google_ads.dart';
 import 'app_color.dart';
 import 'fatwa_dialogs.dart';
 import 'fatwa_question_dialog.dart';
 
 class FatwaTab extends StatefulWidget {
-  const FatwaTab({super.key});
+  const FatwaTab({super.key,});
 
   @override
   State<FatwaTab> createState() => _FatwaTabState();
@@ -22,6 +23,17 @@ class _FatwaTabState extends State<FatwaTab> {
   final TextEditingController _searchController = TextEditingController();
   late final GenerativeModel _model;
 
+  final GoogleAds googleAds = GoogleAds();
+
+
+  @override
+  void dispose() {
+    googleAds.bannerAd?.dispose();
+    googleAds.interstitialAd?.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
   final int _maxQuestionLength = 200;
   final int _maxAnswerLength = 1300;
 
@@ -29,6 +41,12 @@ class _FatwaTabState extends State<FatwaTab> {
   void initState() {
     super.initState();
     _initializeGenerativeAI();
+    googleAds.loadInterstitialAd();
+    googleAds.loadBannerAd(adLoaded: () {
+      setState(() {
+
+      });
+    },);
   }
 
   Future<void> _initializeGenerativeAI() async {
@@ -279,6 +297,7 @@ class _FatwaTabState extends State<FatwaTab> {
                 Row(
                   children: [
                     // Yeni Soru Butonu
+
                     Expanded(
                       child: ElevatedButton.icon(
                         icon: Icon(Icons.add_circle, color: AppColors.primaryBlack),
@@ -289,7 +308,15 @@ class _FatwaTabState extends State<FatwaTab> {
                             fontSize: 16,
                           ),
                         ),
-                        onPressed: () => _showAskFatwaDialog(context),
+                        onPressed: () {
+                          // Reklamı göster ve sonra dialogu aç
+                          googleAds.interstitialAd?.show().then((_) {
+                            _showAskFatwaDialog(context);
+                          }).catchError((error) {
+                            // Reklam gösterilemezse direkt dialogu aç
+                            _showAskFatwaDialog(context);
+                          });
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.goldAccent,
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -483,10 +510,23 @@ class _FatwaTabState extends State<FatwaTab> {
   }
 
   void _showFatwaResponse(BuildContext context, Map<String, dynamic> fatwa) {
-    showDialog(
-      context: context,
-      builder: (context) => FatwaResponseDialog(fatwa: fatwa),
-    );
+    // Önce reklamı göster, sonra dialogu aç
+    googleAds.interstitialAd?.show().then((_) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => FatwaResponseDialog(fatwa: fatwa),
+        );
+      }
+    }).catchError((error) {
+      // Reklam gösterilemezse direkt dialogu aç
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => FatwaResponseDialog(fatwa: fatwa),
+        );
+      }
+    });
   }
 
   Future<void> _submitQuestion(String question) async {
@@ -653,9 +693,5 @@ class _FatwaTabState extends State<FatwaTab> {
     return references;
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
+
 }

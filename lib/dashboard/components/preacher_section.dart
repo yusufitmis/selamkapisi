@@ -3,12 +3,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:selamkapisi/fatwa/preacher_tab/preacher_list.dart';
+import 'package:selamkapisi/google_ads.dart';
 
 class PreachersSection extends StatelessWidget {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleAds? googleAds;
 
-  PreachersSection({super.key});
+  PreachersSection({super.key, required this.googleAds});
 
   @override
   Widget build(BuildContext context) {
@@ -216,7 +218,7 @@ class PreachersSection extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
-              child: PreachersList(),
+              child: PreachersList(googleAds: googleAds),
             ),
             Positioned(
               top: 16,

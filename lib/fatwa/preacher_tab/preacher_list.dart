@@ -1,27 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Add this import
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../google_ads.dart';
 import 'preacher_details.dart';
 import 'question_dialog.dart';
 
 class PreachersList extends StatelessWidget {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance; // Add this
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleAds? googleAds;
 
   // Color scheme
-  final Color _primaryColor = const Color(0xFF121212); // Black
-  final Color _secondaryColor = const Color(0xFFD4AF37); // Gold
-  final Color _accentColor = const Color(0xFF64B5F6); // Light blue
-  final Color _backgroundColor = Colors.white; // White
-  final Color _textColor = const Color(0xFF333333); // Dark gray for text
+  final Color _primaryColor = const Color(0xFF121212);
+  final Color _secondaryColor = const Color(0xFFD4AF37);
+  final Color _accentColor = const Color(0xFF64B5F6);
+  final Color _backgroundColor = Colors.white;
+  final Color _textColor = const Color(0xFF333333);
 
-
-  PreachersList({super.key});
+  PreachersList({super.key, required this.googleAds});
 
   @override
   Widget build(BuildContext context) {
-    final currentUserId = _auth.currentUser?.uid ?? ''; // Get current user ID
+    final currentUserId = _auth.currentUser?.uid ?? '';
 
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore.collection('preachers')
@@ -91,15 +92,7 @@ class PreachersList extends StatelessWidget {
         color: _backgroundColor,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          onTap: () => showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) => PreacherDetails(
-              preacher: preacher,
-              currentUserId: currentUserId, // Pass the currentUserId here
-            ),
-          ),
+          onTap: () => _showPreacherDetailsWithAd(context, preacher, currentUserId),
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -182,10 +175,7 @@ class PreachersList extends StatelessWidget {
                       color: _secondaryColor,
                       size: 32,
                     ),
-                    onPressed: () => showDialog(
-                      context: context,
-                      builder: (context) => QuestionDialog(preacher: preacher),
-                    ),
+                    onPressed: () => _showQuestionDialogWithAd(context, preacher),
                     tooltip: 'Soru Sor',
                   ),
                 ),
@@ -194,6 +184,56 @@ class PreachersList extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _showPreacherDetailsWithAd(BuildContext context,
+      DocumentSnapshot preacher, String currentUserId) async {
+    try {
+      // Try to show ad first
+      await googleAds?.interstitialAd?.show();
+    } catch (e) {
+      debugPrint('Error showing ad: $e');
+    } finally {
+      // Always show details after ad attempt
+      if (context.mounted) {
+        _showPreacherDetails(context, preacher, currentUserId);
+      }
+    }
+  }
+
+  void _showPreacherDetails(BuildContext context,
+      DocumentSnapshot preacher, String currentUserId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => PreacherDetails(
+        preacher: preacher,
+        currentUserId: currentUserId,
+      ),
+    );
+  }
+
+  Future<void> _showQuestionDialogWithAd(BuildContext context,
+      DocumentSnapshot preacher) async {
+    try {
+      // Try to show ad first
+      await googleAds?.interstitialAd?.show();
+    } catch (e) {
+      debugPrint('Error showing ad: $e');
+    } finally {
+      // Always show dialog after ad attempt
+      if (context.mounted) {
+        _showQuestionDialog(context, preacher);
+      }
+    }
+  }
+
+  void _showQuestionDialog(BuildContext context, DocumentSnapshot preacher) {
+    showDialog(
+      context: context,
+      builder: (context) => QuestionDialog(preacher: preacher),
     );
   }
 }

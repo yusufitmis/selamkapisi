@@ -1,59 +1,89 @@
 import 'package:flutter/material.dart';
-import 'package:selamkapisi/service/auth.dart';
 
-class MainScaffold extends StatelessWidget {
+import '../../google_ads.dart';
+import '../../service/auth.dart';
+
+class MainScaffold extends StatefulWidget {
   final Widget body;
   final int currentIndex;
   final String? title;
-  final TextStyle? titleStyle;  // Added parameter
+  final TextStyle? titleStyle;
   final List<Widget>? actions;
   final bool showAppBar;
   final bool showBottomBar;
+
 
   const MainScaffold({
     super.key,
     required this.body,
     this.currentIndex = 0,
     this.title,
-    this.titleStyle,  // Added parameter
+    this.titleStyle,
     this.actions,
     this.showAppBar = true,
     this.showBottomBar = true,
+
   });
 
   @override
-  Widget build(BuildContext context) {
-    final authMethods = AuthMethods();
+  State<MainScaffold> createState() => _MainScaffoldState();
+}
 
-    void handleTabChange(int index) {  // _ yerine normal isim kullanıldı
-      if (currentIndex == index) return;
+class _MainScaffoldState extends State<MainScaffold> {
+  final authMethods = AuthMethods();
+  final GoogleAds? googleAds = GoogleAds();
+  @override
+  void initState() {
+    super.initState();
+    googleAds?.loadInterstitialAd();
+    googleAds?.loadBannerAd(adLoaded: () {
+      setState(() {
 
-      switch (index) {
-        case 0:
-          Navigator.pushReplacementNamed(context, '/dashboard');
-          break;
-        case 1:
-          Navigator.pushReplacementNamed(context, '/fatwa');
-          break;
-        case 2:
-          Navigator.pushReplacementNamed(context, '/coach');
-          break;
-        case 3:
-          Navigator.pushReplacementNamed(context, '/profile');
-          break;
-      }
+      });
+    },);
+  }
+
+  @override
+  void dispose() {
+    googleAds?.bannerAd?.dispose();
+    googleAds?.interstitialAd?.dispose();
+    super.dispose();
+  }
+
+  void handleTabChange(int index) async {
+    if (widget.currentIndex == index) return;
+
+    if (googleAds != null) {
+       googleAds!.showInterstitialAd();
     }
 
+    switch (index) {
+      case 0:
+        Navigator.pushReplacementNamed(context, '/dashboard');
+        break;
+      case 1:
+        Navigator.pushReplacementNamed(context, '/fatwa');
+        break;
+      case 2:
+        Navigator.pushReplacementNamed(context, '/coach');
+        break;
+      case 3:
+        Navigator.pushReplacementNamed(context, '/profile');
+        break;
+    }
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[900],
-      appBar: showAppBar
+      appBar: widget.showAppBar
           ? AppBar(
         toolbarHeight: 80,
         backgroundColor: Colors.black,
         elevation: 0,
-        title: title != null
-            ? Text(title!, style: titleStyle)  // Apply titleStyle here
+        title: widget.title != null
+            ? Text(widget.title!, style: widget.titleStyle)
             : Container(
           alignment: Alignment.centerLeft,
           child: ColorFiltered(
@@ -68,7 +98,7 @@ class MainScaffold extends StatelessWidget {
           ),
         ),
         actions: [
-          if (actions != null) ...actions!,
+          if (widget.actions != null) ...widget.actions!,
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: IconButton(
@@ -83,11 +113,11 @@ class MainScaffold extends StatelessWidget {
         ],
       )
           : null,
-      body: body,
-      bottomNavigationBar: showBottomBar
+      body: widget.body,
+      bottomNavigationBar: widget.showBottomBar
           ? BottomNavigationBar(
         backgroundColor: Colors.black,
-        currentIndex: currentIndex,
+        currentIndex: widget.currentIndex,
         selectedItemColor: Colors.amber,
         unselectedItemColor: Colors.grey,
         onTap: handleTabChange,
@@ -104,7 +134,6 @@ class MainScaffold extends StatelessWidget {
             icon: Icon(Icons.psychology),
             label: 'Koç',
           ),
-
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Profil',

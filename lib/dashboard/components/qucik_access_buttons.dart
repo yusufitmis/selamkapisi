@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../google_ads.dart';
 import '../utils/verse_utils.dart';
 
 class QuickAccessButtons extends StatelessWidget {
-  const QuickAccessButtons({super.key});
+  final GoogleAds googleAds;
+  QuickAccessButtons({super.key, required this.googleAds});
 
   @override
   Widget build(BuildContext context) {
@@ -48,25 +50,37 @@ class QuickAccessButtons extends StatelessWidget {
                 icon: Icons.chat,
                 label: 'Fetva Soralım',
                 color: Colors.green,
-                onTap: () => Navigator.pushReplacementNamed(context, '/fatwa'),
+                onTap: () {
+                  googleAds.interstitialAd?.show();
+                  Navigator.pushReplacementNamed(context, '/fatwa');
+                }
               ),
               _buildQuickAccessButton(
                 icon: Icons.book,
                 label: 'İman Tazele',
                 color: Colors.blue,
-                onTap: () => VerseUtils.showRandomVerse(context),
+                onTap: () {
+                  googleAds.interstitialAd?.show();
+                  VerseUtils.showRandomVerse(context);
+                }
               ),
               _buildQuickAccessButton(
                 icon: Icons.emoji_events,
                 label: 'Görevlerim',
                 color: Colors.purple,
-                onTap: () => Navigator.pushReplacementNamed(context, '/coach'),
+                onTap: () {
+                  googleAds.interstitialAd?.show();
+                  Navigator.pushReplacementNamed(context, '/coach');
+                }
               ),
               _buildQuickAccessButton(
                 icon: Icons.person,
                 label: 'Profil',
                 color: Colors.orange,
-                onTap: () => Navigator.pushReplacementNamed(context, '/profile'),
+                onTap: () {
+                  googleAds.interstitialAd?.show();
+                  Navigator.pushReplacementNamed(context, '/profile');
+                }
               ),
             ],
           ),

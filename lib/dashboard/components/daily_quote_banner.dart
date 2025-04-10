@@ -5,11 +5,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:selamkapisi/fatwa/preacher_tab/question_dialog.dart';
 import 'package:selamkapisi/fatwa/preacher_tab/preacher_details.dart';
 
+import '../../google_ads.dart';
+
 class DailyQuoteBanner extends StatelessWidget {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-
   DailyQuoteBanner({super.key});
+  @override
 
   @override
   Widget build(BuildContext context) {
@@ -172,7 +174,7 @@ class DailyQuoteBanner extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 24, vertical: 12),
                         ),
-                        onPressed: () => _showQuestionDialog(context, preacherSnapshot.data!),
+                        onPressed: () => {_showQuestionDialog(context, preacherSnapshot.data!),},
                         child: const Text(
                           'SORU SOR',
                           style: TextStyle(

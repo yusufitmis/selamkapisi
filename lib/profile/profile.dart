@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:selamkapisi/models/user_model.dart';
 import 'package:selamkapisi/profile/settings_section.dart';
 import '../dashboard/components/main_scaffold.dart';
+import '../google_ads.dart';
 import '../service/user_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -23,6 +25,16 @@ class _ProfilePageState extends State<ProfilePage> {
   late TextEditingController _displayNameController;
   late UserService _userService;
   late UserModel _user;
+  final GoogleAds googleAds = GoogleAds();
+
+
+  @override
+  void dispose() {
+    googleAds.bannerAd?.dispose();
+    googleAds.interstitialAd?.dispose();
+    _displayNameController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -30,6 +42,12 @@ class _ProfilePageState extends State<ProfilePage> {
     _userService = UserService();
     _displayNameController = TextEditingController();
     _loadUserData();
+    googleAds.loadInterstitialAd();
+    googleAds.loadBannerAd(adLoaded: () {
+      setState(() {
+
+      });
+    },);
   }
 
   Future<void> _loadUserData() async {
@@ -99,6 +117,30 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _showAdThenLaunchURL(String url) async {
+    if (googleAds.interstitialAd != null) {
+      googleAds.interstitialAd!.fullScreenContentCallback =
+          FullScreenContentCallback(
+            onAdDismissedFullScreenContent: (ad) {
+              ad.dispose();
+              googleAds.loadInterstitialAd(); // Reklamı tekrar yükle
+              _launchURL(url); // Reklam kapandıktan sonra URL'yi aç
+            },
+            onAdFailedToShowFullScreenContent: (ad, error) {
+              ad.dispose();
+              googleAds.loadInterstitialAd(); // Hata olursa tekrar yükle
+              _launchURL(url); // Yine de URL’yi aç
+            },
+          );
+
+      googleAds.interstitialAd!.show();
+      googleAds.interstitialAd = null;
+    } else {
+      // Eğer reklam yoksa direkt URL'yi aç
+      _launchURL(url);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<UserModel>(
@@ -118,10 +160,34 @@ class _ProfilePageState extends State<ProfilePage> {
                   isEditing ? Icons.save : Icons.edit,
                   color: _secondaryColor,
                 ),
-                onPressed: () {
-                  if (isEditing) _updateProfile();
-                  setState(() => isEditing = !isEditing);
+                onPressed: () async {
+                  if (isEditing) {
+                    _updateProfile();
+                    setState(() => isEditing = false);
+                  } else {
+                    if (googleAds.interstitialAd != null) {
+                      googleAds.interstitialAd!.fullScreenContentCallback =
+                          FullScreenContentCallback(
+                            onAdDismissedFullScreenContent: (ad) {
+                              ad.dispose();
+                              googleAds.loadInterstitialAd();
+                              setState(() => isEditing = true); // Reklamdan sonra düzenleme moduna geç
+                            },
+                            onAdFailedToShowFullScreenContent: (ad, error) {
+                              ad.dispose();
+                              googleAds.loadInterstitialAd();
+                              setState(() => isEditing = true);
+                            },
+                          );
+                      googleAds.interstitialAd!.show();
+                      googleAds.interstitialAd = null;
+                    } else {
+                      // Reklam hazır değilse doğrudan düzenleme moduna geç
+                      setState(() => isEditing = true);
+                    }
+                  }
                 },
+
               ),
             ],
             body: SingleChildScrollView(
@@ -221,9 +287,10 @@ class _ProfilePageState extends State<ProfilePage> {
                         'Gizlilik Sözleşmesi',
                         style: TextStyle(color: _textColor),
                       ),
-                      onTap: () => _launchURL(
+                      onTap: () => _showAdThenLaunchURL(
                         'https://github.com/yusufitmis/selam_kapisi/blob/main/privacy-policy.md',
                       ),
+
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -235,13 +302,48 @@ class _ProfilePageState extends State<ProfilePage> {
                         'Kullanım Koşulları',
                         style: TextStyle(color: _textColor),
                       ),
-                      onTap: () => _launchURL(
+                      onTap: () => _showAdThenLaunchURL(
                         'https://github.com/yusufitmis/selam_kapisi/blob/main/terms-of-service.md',
                       ),
+
                     ),
                   ),
+                  SizedBox(height:120),
+                  if (googleAds.bannerAd != null)
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.amber.shade300, Colors.amber.shade700], // Altın renkli degrade arka plan
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16), // Yuvarlatılmış köşeler
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: Offset(0, 4), // Gölgeli 3D etkisi
+                          ),
+                        ],
+                        border: Border.all(
+                          color: Colors.grey, // Koyu altın rengi border
+                          width: 3, // Daha belirgin border
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12), // Padding değerini arttırdım
+                      alignment: Alignment.center,
+                      margin: const EdgeInsets.symmetric(vertical: 15), // Üst ve alt margin
+                      child: SizedBox(
+                        width: googleAds.bannerAd!.size.width.toDouble(),
+                        height: googleAds.bannerAd!.size.height.toDouble(),
+                        child: AdWidget(ad: googleAds.bannerAd!),
+                      ),
+                    ),
                 ],
+
               ),
+
             ),
           );
         } else if (snapshot.hasError) {
@@ -252,9 +354,5 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  @override
-  void dispose() {
-    _displayNameController.dispose();
-    super.dispose();
-  }
+
 }
